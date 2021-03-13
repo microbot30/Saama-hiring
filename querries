@@ -1,0 +1,69 @@
+import pyodbc 
+cnxn = pyodbc.connect("Driver={SQL Server Native Client 11.0};"
+                      "Server=HARISH-T480\SQLEXPRESS;"
+                      "Database=WMS;"
+                      "Trusted_Connection=yes;")
+
+
+cursor = cnxn.cursor()
+cursor.execute('SELECT * FROM Table')
+
+
+query = "EXEC [api_get_data_type3] @psiteid='5538',  @psubjid= '', @psubjectid=''"
+cursor.execute(query)
+
+---------
+
+
+xlsx to sql server cmd:
+	SELECT * INTO AE_Data_Sample
+FROM OPENROWSET('Microsoft.ACE.OLEDB.12.0',
+  'Excel 12.0 Xml; HDR=YES; IMEX=1;
+   Database=D:\Downloads\AE_data_sample.xlsx',
+   [Sheet1$]);
+
+
+SELECT * INTO CM_Data_Sample
+FROM OPENROWSET('Microsoft.ACE.OLEDB.12.0',
+  'Excel 12.0 Xml; HDR=YES; IMEX=1;
+   Database=D:\Downloads\cm_data_sample1.xlsx',
+   [Sheet1$]);
+
+
+SELECT * FROM AE_DATA_SAMPLE
+
+select * from cm_data_sample
+where convert(date,cmstdat,120)<=convert(date,getdate(),120)
+
+-->TYPE 1
+--> MEDICATION STARTED BEFORE SYMPTOM OCCURS
+SELECT A.AETERM,A.AESPID,A.AESTDAT,A.AEENDAT,A.AETOXGR, 0 AS AECM,B.CMTRT,B.CMSTDAT,B.CMENDAT,
+B.CMAENO,B.SITEID AS CMSITE,B.SUBJID,
+'PRIOR MEDICATION' AS REMARKS
+FROM AE_DATA_SAMPLE A, CM_DATA_SAMPLE B
+WHERE A.AESPID=B.CMAENO
+AND CONVERT(DATE,AESTDAT,120)<=CONVERT(DATE,CMSTDAT,120)
+--AND CONVERT(DATE,AEENDAT,120)>=CONVERT(DATE,CMENDAT,120)
+
+-->TYPE 2 
+--> MEDICATION STARTED AFTER SYMPTOM ENDED
+SELECT A.AETERM,A.AESPID,A.AESTDAT,A.AEENDAT,A.AETOXGR, 0 AS AECM,B.CMTRT,B.CMSTDAT,B.CMENDAT,
+B.CMAENO,B.SITEID AS CMSITE,B.SUBJID,
+'AE AND CM NOT MATCHING' AS REMARKS
+FROM AE_DATA_SAMPLE A, CM_DATA_SAMPLE B
+WHERE A.AESPID=B.CMAENO
+AND CONVERT(DATE,AEENDAT,120)<CONVERT(DATE,CMSTDAT,120)
+
+-->TYPE 3 
+--> Duplicate/Overlapping AE 
+SELECT A.*,
+'AE AND CM NOT MATCHING' AS REMARKS
+FROM AE_DATA_SAMPLE A, AE_DATA_SAMPLE B
+WHERE A.AETERM=B.AETERM
+AND A.SITEID=B.SITEID
+AND A.SUBJID=B.SUBJID
+AND A.SUBJECTID=B.SUBJECTID
+AND A.AESPID=B.AESPID
+AND CONVERT(DATE,A.AEENDAT,120)=CONVERT(DATE,B.AESTDAT,120)
+
+
